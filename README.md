@@ -56,17 +56,17 @@ Add an `insert` patch to your user overlay — `~/.dsh/config.yaml`, or `$DSH_HO
       name: '$HOME/dsh-plugins/dsh-agentmemory/lib/index.js'
 ```
 
-### Desktop plugin manager (Oh-DSH-Desktop)
+### Plugin manager
 
-Publish the repo and register it in the marketplace catalog, then install with an isolated preview:
+Once published to the marketplace, install it from your plugin manager:
 
-```text
-desktop_plugin_prepare install dsh-agentmemory
-# review the isolated preview
-desktop_plugin_apply
+```bash
+dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
 ```
 
-### dsh registry
+or search for `dsh-agentmemory` in the Oh-DSH-Desktop plugin manager.
+
+For a local checkout:
 
 ```bash
 dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory

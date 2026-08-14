@@ -56,17 +56,17 @@ npm run build                   # tsc -> lib/（已入库，改源码后需重�
       name: '$HOME/dsh-plugins/dsh-agentmemory/lib/index.js'
 ```
 
-### 桌面插件管理器（Oh-DSH-Desktop）
+### 插件管理器
 
-发布仓库并注册进目录后，带隔离预览安装：
+发布到市场后，从插件管理器安装：
 
-```text
-desktop_plugin_prepare install dsh-agentmemory
-# 审查隔离预览
-desktop_plugin_apply
+```bash
+dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
 ```
 
-### dsh registry
+或在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。
+
+本地检出安装：
 
 ```bash
 dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory
