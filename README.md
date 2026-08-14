@@ -53,17 +53,7 @@ Then restart DSH. Compiled output is committed, so no build step is required.
 
 ### Plugin manager
 
-```bash
-dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
-```
-
-or search for `dsh-agentmemory` in the Oh-DSH-Desktop plugin manager and install it there.
-
-### Local checkout
-
-```bash
-dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory
-```
+Install from the Oh-DSH-Desktop plugin manager by searching for `dsh-agentmemory`.
 
 ## Configuration
 

@@ -53,17 +53,7 @@ git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agent
 
 ### 插件管理器
 
-```bash
-dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
-```
-
-或在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。
-
-### 本地检出
-
-```bash
-dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory
-```
+在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。
 
 ## 配置
 
