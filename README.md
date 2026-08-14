@@ -51,6 +51,14 @@ Add an `insert` patch to `~/.dsh/config.yaml` (or `$DSH_HOME/cordis.patch.yml` f
 
 Then restart DSH. Compiled output is committed, so no build step is required.
 
+### Official CLI
+
+```bash
+npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agentmemory
+```
+
+Replace `web` with your profile name. The package declares a `dsh.bundle.patch`, so it loads as a profile layer; compiled output is committed, so no build runs on install.
+
 ### Plugin manager
 
 Install from the Oh-DSH-Desktop plugin manager by searching for `dsh-agentmemory`.

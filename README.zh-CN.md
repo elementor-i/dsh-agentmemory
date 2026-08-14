@@ -51,6 +51,14 @@ git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agent
 
 然后重启 DSH。编译产物已随仓库提供，无需自行构建。
 
+### 官方 CLI
+
+```bash
+npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agentmemory
+```
+
+把 `web` 换成你的 profile 名。插件声明了 `dsh.bundle.patch`，会作为 profile layer 加载；编译产物已随仓库提供，安装时无需构建。
+
 ### 插件管理器
 
 在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。

@@ -1,0 +1,5 @@
+# dsh-agentmemory bundle patch: insert this plugin as one profile layer.
+# `name` resolves to this package's own entry (lib/index.js) via main/exports.
+- insert:
+    - id: dsh-agentmemory
+      name: '@dsh-external/dsh-agentmemory'
