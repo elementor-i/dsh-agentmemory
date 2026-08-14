@@ -2,7 +2,7 @@
 
 # dsh-agentmemory
 
-**agentmemory for DeepSeek Harness** — the full `memory_*` tool surface, automatic capture hooks, and opt-in context injection, all over the local REST server.
+**agentmemory for DeepSeek Harness** — full `memory_*` tools, automatic capture hooks, and opt-in context injection over the local REST server.
 
 [English](./README.md) · [中文](./README.zh-CN.md)
 
@@ -12,43 +12,36 @@
 
 </div>
 
-dsh-agentmemory bridges [agentmemory](https://github.com/rohitg00/agentmemory) — a local memory server for coding agents — into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It is a native Cordis plugin, not an MCP shim: it talks REST directly, subscribes to harness events to capture observations automatically, and can inject recalled context back into the system prompt.
+dsh-agentmemory connects [agentmemory](https://github.com/rohitg00/agentmemory), a local memory server for coding agents, to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It exposes the full `memory_*` tool set, captures observations automatically from sessions, prompts, and tool activity, and can inject recalled context into the system prompt — all over the local REST server, with no MCP bridge required.
 
 ## Features
 
 - **Full tool surface** — all 54 `memory_*` tools (8 core) mapped to `/agentmemory/*`, plus `memory_observe` and a `memory_http` escape hatch for any endpoint.
-- **Automatic capture hooks** — reproduces agentmemory's Claude Code hooks by subscribing to DSH's official events: sessions, prompts, tool use, subagents, workflows, approvals.
-- **Context injection** — opt-in; recalls session context on start and injects it into the system prompt.
-- **Safe by default** — credential redaction, per-call timeouts, non-blocking fire-and-forget observation, destructive tools gated behind a flag.
+- **Automatic capture** — session, prompt, tool-use, subagent, workflow, and approval activity are recorded as observations in the background.
+- **Context injection** — opt-in; recalled context from the session is added to the system prompt.
+- **Safe by default** — credential redaction, per-call timeouts, non-blocking observation, and destructive tools gated behind a flag.
 - **No MCP required** — no stdio bridge, no child process; the running REST server (`localhost:3111`) is the only dependency.
 
-## Prerequisites
+## Requirements
 
 An agentmemory server running on the same machine (default `http://127.0.0.1:3111`, viewer on `3113`):
 
 ```bash
 curl -fsS http://127.0.0.1:3111/agentmemory/livez
-# {"service":"agentmemory","status":"ok",...}
+# {"service":"agentmemory","status":"ok"} when healthy
 ```
 
-The plugin treats the server as an external process: it health-checks on startup and only warns when unreachable — it never crashes the harness.
+If the server is unavailable, the plugin logs a warning and the `memory_*` tools return errors; the harness itself keeps running normally.
 
-## Quick start
+## Install
+
+### Native mount
 
 ```bash
 git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agentmemory
-cd ~/dsh-plugins/dsh-agentmemory
-npm install --legacy-peer-deps   # builds against the published @deepseek-ai SDK types
-npm run build                   # tsc -> lib/ (committed, but rebuild after edits)
 ```
 
-Then mount it (see Installation) and restart DSH.
-
-## Installation
-
-### Native mount (default)
-
-Add an `insert` patch to your user overlay — `~/.dsh/config.yaml`, or `$DSH_HOME/cordis.patch.yml` for a whole machine:
+Add an `insert` patch to `~/.dsh/config.yaml` (or `$DSH_HOME/cordis.patch.yml` for all profiles):
 
 ```yaml
 - insert:
@@ -56,17 +49,17 @@ Add an `insert` patch to your user overlay — `~/.dsh/config.yaml`, or `$DSH_HO
       name: '$HOME/dsh-plugins/dsh-agentmemory/lib/index.js'
 ```
 
-### Plugin manager
+Then restart DSH. Compiled output is committed, so no build step is required.
 
-Once published to the marketplace, install it from your plugin manager:
+### Plugin manager
 
 ```bash
 dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
 ```
 
-or search for `dsh-agentmemory` in the Oh-DSH-Desktop plugin manager.
+or search for `dsh-agentmemory` in the Oh-DSH-Desktop plugin manager and install it there.
 
-For a local checkout:
+### Local checkout
 
 ```bash
 dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory
@@ -74,7 +67,7 @@ dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-ag
 
 ## Configuration
 
-All keys are optional and have safe defaults. Environment fallbacks mirror agentmemory's own hooks (`AGENTMEMORY_URL`, `AGENTMEMORY_SECRET`, `AGENTMEMORY_PROJECT_NAME`).
+All keys are optional and have safe defaults. The environment variables `AGENTMEMORY_URL`, `AGENTMEMORY_SECRET`, and `AGENTMEMORY_PROJECT_NAME` are honored as fallbacks.
 
 ```yaml
 dsh-agentmemory:
@@ -97,7 +90,7 @@ dsh-agentmemory:
     captureSubagents: true
     captureWorkflow: true
     captureApprovals: false
-    preCompactSnapshot: false      # approx PreCompact on request-error
+    preCompactSnapshot: false      # approximate PreCompact on request-error
     maxObservationBytes: 8000
     redactSecrets: true
 ```
@@ -116,7 +109,7 @@ dsh-agentmemory:
 
 ## Hooks
 
-agentmemory's Claude Code hooks are reproduced by subscribing to DSH's official events. Every handler is non-blocking: HTTP is fired with a short timeout and never awaited, and waterfall events always call `next()`.
+Activity is captured automatically through DSH's official events. Handlers are non-blocking: requests use a short timeout and are never awaited, and waterfall events always call `next()`.
 
 | agentmemory hook | DSH event | Mode |
 | --- | --- | --- |
@@ -129,7 +122,7 @@ agentmemory's Claude Code hooks are reproduced by subscribing to DSH's official 
 | Notification | `approval/request` | waterfall |
 | TaskCompleted | `agent/turn-stopping` | serial |
 | SessionEnd | `session/disposed` → `/session/end` | emit |
-| (context injection) | `system-prompt/assemble` | waterfall |
+| context injection | `system-prompt/assemble` | waterfall |
 
 ## Tools
 
@@ -141,40 +134,42 @@ The remaining 46: `memory_commits` · `memory_commit_lookup` · `memory_compress
 
 Extras:
 
-- `memory_observe` — record a raw observation manually (hooks already do this automatically).
-- `memory_http` — call any `/agentmemory/*` endpoint with a JSON body/query (escape hatch for unmapped endpoints).
+- `memory_observe` — record a raw observation manually (automatic capture usually covers this).
+- `memory_http` — call any `/agentmemory/*` endpoint with a JSON body or query (for endpoints without a dedicated tool).
 
 ## How it works
 
-```text
-DSH events ──ctx.on──▶ hooks.ts ──fire-and-forget──▶ /agentmemory/observe
-                                                          │
-model ──memory_* tool──▶ tools.ts ──REST──▶ /agentmemory/*  (3111)
-                                                          │
-session/created ──▶ /session/start ──▶ context ──▶ system-prompt/assemble (optional)
-```
+Three parts cooperate over the local REST server:
 
-`client.ts` is a thin REST client (Bearer auth, timeout, JSON). `tools.ts` is a data-driven table mapping each tool to its endpoint; `hooks.ts` subscribes to harness events and forwards observations. `util.ts` mirrors agentmemory's own project resolution, truncation, and secret redaction.
+- **Tools** — each `memory_*` tool maps to the matching `/agentmemory/*` endpoint.
+- **Hooks** — DSH lifecycle events are forwarded to the server as observations.
+- **Injection** — on session start, the server returns recalled context, which is added to the system prompt when `injectContext` is enabled.
+
+```text
+DSH events     ──▶  /agentmemory/observe        automatic capture
+memory_* tools ──▶  /agentmemory/*              on-demand operations
+session start  ──▶  context ──▶ system prompt   optional injection
+```
 
 ## Compatibility
 
-The tool table and endpoint map are transcribed from agentmemory's generated references (`src/mcp/tools-registry.ts`, `src/triggers/api.ts`). A local server version may differ from the repo `main`:
+Tool names and endpoints follow agentmemory's official reference. A running server may differ from the latest release:
 
-- some features are off by default (e.g. `/slots` returns 503 with an enable hint);
-- newer endpoints may not exist yet.
+- some features are disabled by default (for example `/slots` returns 503 with an enable hint);
+- newer endpoints may not be present yet.
 
-On a 4xx/5xx, follow the hint in the response body or align server versions. `memory_http` bypasses unmapped endpoints.
+On a 4xx or 5xx response, follow the hint in the response body or align the server version. `memory_http` reaches endpoints without a dedicated tool.
 
 ## Development
 
-```bash
-npm install --legacy-peer-deps   # types come from @deepseek-ai/dsh-tools etc.
-npm run typecheck
-npm run build                   # tsc -> lib/
-npm test                        # read-only checks against a running server
-```
+Build from source:
 
-`inject = ['tools', 'systemPrompt']`. `apply(ctx, config)` registers tools, subscribes hooks, and contributes a system-prompt section. Event names come from DSH's official event matrix (`docs/event-producer-consumer.md`); payloads are read defensively.
+```bash
+npm install --legacy-peer-deps
+npm run typecheck
+npm run build
+npm test        # read-only checks against a running server
+```
 
 ## License
 
@@ -182,5 +177,5 @@ npm test                        # read-only checks against a running server
 
 ## Acknowledgements
 
-- [agentmemory](https://github.com/rohitg00/agentmemory) — the memory server this plugin fronts.
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host and its official event matrix.
+- [agentmemory](https://github.com/rohitg00/agentmemory) — the memory server this plugin connects to.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host and its event system.

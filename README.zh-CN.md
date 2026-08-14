@@ -12,14 +12,14 @@
 
 </div>
 
-dsh-agentmemory 把 [agentmemory](https://github.com/rohitg00/agentmemory)（面向编码 agent 的本地记忆服务器）桥接进 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）。它是原生 Cordis 插件，不是 MCP 壳：直接走 REST、订阅 harness 事件自动捕获 observation、并可选地把召回到的上下文注回系统提示词。
+dsh-agentmemory 把 [agentmemory](https://github.com/rohitg00/agentmemory)（面向编码 agent 的本地记忆服务器）接入 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）。它提供完整的 `memory_*` 工具集，自动捕获会话、提示词与工具活动的 observation，并可把召回到的上下文注回系统提示词 —— 全程走本地 REST 服务，无需 MCP 桥。
 
 ## 特性
 
 - **完整工具面** —— 全部 54 个 `memory_*` 工具（8 个 core）映射到 `/agentmemory/*`，外加 `memory_observe` 和任意端点的 `memory_http` 逃生舱。
-- **自动捕获 hooks** —— 订阅 DSH 官方事件，还原 agentmemory 的 Claude Code 钩子：会话、提示词、工具调用、子代理、工作流、审批。
-- **上下文注入** —— 可选；会话开始时召回上下文并注入系统提示词。
-- **默认安全** —— 密钥脱敏、逐调用超时、非阻塞 fire-and-forget 观察、破坏性工具用开关门控。
+- **自动捕获** —— 会话、提示词、工具调用、子代理、工作流、审批活动在后台被记录为 observation。
+- **上下文注入** —— 可选；会话召回的上下文会加入系统提示词。
+- **默认安全** —— 密钥脱敏、逐调用超时、非阻塞观察、破坏性工具用开关门控。
 - **无需 MCP** —— 没有 stdio 桥、没有子进程；唯一依赖是运行中的 REST 服务（`localhost:3111`）。
 
 ## 前置条件
@@ -28,27 +28,20 @@ dsh-agentmemory 把 [agentmemory](https://github.com/rohitg00/agentmemory)（面
 
 ```bash
 curl -fsS http://127.0.0.1:3111/agentmemory/livez
-# {"service":"agentmemory","status":"ok",...}
+# 健康时输出 {"service":"agentmemory","status":"ok"}
 ```
 
-插件把服务当作外部进程：启动时做健康检查，不可达只告警、绝不拖垮 harness。
-
-## 快速开始
-
-```bash
-git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agentmemory
-cd ~/dsh-plugins/dsh-agentmemory
-npm install --legacy-peer-deps   # 类型来自已发布的 @deepseek-ai SDK 包
-npm run build                   # tsc -> lib/（已入库，改源码后需重新构建）
-```
-
-然后挂载（见安装）并重启 DSH。
+服务不可用时，插件会记录一条告警，`memory_*` 工具返回错误，但 harness 本身不受影响、照常运行。
 
 ## 安装
 
-### 原生挂载（默认）
+### 原生挂载
 
-往用户 overlay 里加一段 `insert` patch —— `~/.dsh/config.yaml`，或整机生效的 `$DSH_HOME/cordis.patch.yml`：
+```bash
+git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agentmemory
+```
+
+往 `~/.dsh/config.yaml`（或对全部 profile 生效的 `$DSH_HOME/cordis.patch.yml`）加一段 `insert` patch：
 
 ```yaml
 - insert:
@@ -56,9 +49,9 @@ npm run build                   # tsc -> lib/（已入库，改源码后需重�
       name: '$HOME/dsh-plugins/dsh-agentmemory/lib/index.js'
 ```
 
-### 插件管理器
+然后重启 DSH。编译产物已随仓库提供，无需自行构建。
 
-发布到市场后，从插件管理器安装：
+### 插件管理器
 
 ```bash
 dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
@@ -66,7 +59,7 @@ dshx install dsh-agentmemory https://github.com/elementor-i/dsh-agentmemory
 
 或在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。
 
-本地检出安装：
+### 本地检出
 
 ```bash
 dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-agentmemory
@@ -74,7 +67,7 @@ dsh registry install ~/dsh-plugins/dsh-agentmemory && dsh registry enable dsh-ag
 
 ## 配置
 
-所有键都可选、有安全默认值。环境变量回退与 agentmemory 自身的 hooks 一致（`AGENTMEMORY_URL`、`AGENTMEMORY_SECRET`、`AGENTMEMORY_PROJECT_NAME`）。
+所有键都可选、有安全默认值。环境变量 `AGENTMEMORY_URL`、`AGENTMEMORY_SECRET`、`AGENTMEMORY_PROJECT_NAME` 会作为回退被读取。
 
 ```yaml
 dsh-agentmemory:
@@ -116,7 +109,7 @@ dsh-agentmemory:
 
 ## Hooks
 
-通过订阅 DSH 官方事件还原 agentmemory 的 Claude Code 钩子。所有 handler 非阻塞：HTTP 短超时、永不 await；waterfall 事件一律调用 `next()`。
+活动通过 DSH 官方事件被自动捕获。所有 handler 非阻塞：请求用短超时、永不等待；waterfall 事件一律调用 `next()`。
 
 | agentmemory 钩子 | DSH 事件 | 模式 |
 | --- | --- | --- |
@@ -129,7 +122,7 @@ dsh-agentmemory:
 | Notification | `approval/request` | waterfall |
 | TaskCompleted | `agent/turn-stopping` | serial |
 | SessionEnd | `session/disposed` → `/session/end` | emit |
-| （上下文注入） | `system-prompt/assemble` | waterfall |
+| 上下文注入 | `system-prompt/assemble` | waterfall |
 
 ## 工具
 
@@ -141,40 +134,42 @@ core 集合（默认注册，`coreToolsOnly` 时仅注册这些）：
 
 额外：
 
-- `memory_observe` —— 手动记录一条 observation（hooks 已自动完成）。
-- `memory_http` —— 用 JSON body/query 调用任意 `/agentmemory/*` 端点（未映射端点的逃生舱）。
+- `memory_observe` —— 手动记录一条 observation（自动捕获通常已覆盖）。
+- `memory_http` —— 用 JSON body 或 query 调用任意 `/agentmemory/*` 端点（用于没有专用工具的端点）。
 
 ## 工作原理
 
-```text
-DSH 事件 ──ctx.on──▶ hooks.ts ──fire-and-forget──▶ /agentmemory/observe
-                                                          │
-模型 ──memory_* 工具──▶ tools.ts ──REST──▶ /agentmemory/*  (3111)
-                                                          │
-session/created ──▶ /session/start ──▶ context ──▶ system-prompt/assemble（可选）
-```
+三个部分协同工作，全程走本地 REST 服务：
 
-`client.ts` 是薄 REST 客户端（Bearer 认证、超时、JSON）；`tools.ts` 是数据驱动的「工具 → 端点」映射表；`hooks.ts` 订阅 harness 事件并转发 observation；`util.ts` 复刻 agentmemory 自身的 project 解析、截断与密钥脱敏。
+- **工具** —— 每个 `memory_*` 工具对应一个 `/agentmemory/*` 端点。
+- **Hooks** —— DSH 生命周期事件被转发到服务端记录为 observation。
+- **注入** —— 会话开始时服务端返回召回上下文，开启 `injectContext` 后会被加入系统提示词。
+
+```text
+DSH 事件      ──▶  /agentmemory/observe        自动捕获
+memory_* 工具 ──▶  /agentmemory/*              按需操作
+会话开始      ──▶  context ──▶ system prompt  可选注入
+```
 
 ## 兼容性
 
-工具表与端点映射转写自 agentmemory 的生成物（`src/mcp/tools-registry.ts`、`src/triggers/api.ts`）。本地 server 版本可能与仓库 `main` 有差异：
+工具名与端点遵循 agentmemory 官方参考。运行中的 server 可能与最新发布版有差异：
 
 - 某些功能默认关闭（例如 `/slots` 返回 503 并附带开启提示）；
-- 较新端点可能尚未实现。
+- 较新的端点可能尚未实现。
 
-遇到 4xx/5xx 时，按响应体里的提示启用对应功能，或对齐 server 版本。`memory_http` 可绕过未映射端点。
+遇到 4xx/5xx 时，按响应体里的提示操作，或对齐 server 版本。`memory_http` 可访问没有专用工具的端点。
 
 ## 开发
 
-```bash
-npm install --legacy-peer-deps   # 类型来自 @deepseek-ai/dsh-tools 等
-npm run typecheck
-npm run build                   # tsc -> lib/
-npm test                        # 对运行中的 server 做只读连通测试
-```
+从源码构建：
 
-`inject = ['tools', 'systemPrompt']`。`apply(ctx, config)` 注册工具、订阅 hooks、贡献系统提示词段。事件名来自 DSH 官方事件矩阵（`docs/event-producer-consumer.md`），payload 一律防御式读取。
+```bash
+npm install --legacy-peer-deps
+npm run typecheck
+npm run build
+npm test        # 对运行中的 server 做只读连通测试
+```
 
 ## License
 
@@ -183,4 +178,4 @@ npm test                        # 对运行中的 server 做只读连通测试
 ## 致谢
 
 - [agentmemory](https://github.com/rohitg00/agentmemory) —— 本插件所对接的记忆服务器。
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) —— 宿主及其官方事件矩阵。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) —— 宿主及其事件系统。
