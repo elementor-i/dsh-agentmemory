@@ -184,6 +184,35 @@ npm run build
 npm test        # 对运行中的 server 做只读连通测试
 ```
 
+## FAQ
+
+### 插件管理器装不上，还有什么办法？
+
+Oh-DSH-Desktop 的插件管理器与官方 CLI 底层都会执行 `dsh plugin --profile <name> add <package>`。如果你那里的插件管理器装不上，CLI 是等效的替代方案：
+
+```bash
+npx -p @deepseek-ai/dsh dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+```
+
+把 `desktop` 换成你的 profile 名，然后重启 DSH。如果你管理的是桌面 profile，请使用与桌面应用相同的 `DSH_HOME`（macOS 下为 `~/Library/Application Support/Oh-DSH-Desktop/dsh`）。
+
+### `ERR_PNPM_UNEXPECTED_STORE` 或 "pnpm failed in profile directory"
+
+当 profile 的 `node_modules` 曾从某个已不存在的 pnpm store 链接时可能出现——例如插件管理器的预览目录被清理之后。在 macOS 上观察到的一个可行做法是先重链接到当前 store，再重试：
+
+```bash
+CI=true dsh plugin --profile desktop install
+dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+```
+
+（`CI=true` 让 pnpm 在无交互提示下重建 `node_modules`。）
+
+### 插件管理器报 `gh` 超时
+
+插件管理器会调用 GitHub CLI（`gh`）来解析提交和克隆仓库。如果它报 `gh` 超时、而同样的命令在你自己的终端里正常，通常重试、或改走上面的 CLI 方式，是更快的出路。
+
+以上是某个特定环境下观察到的现象记录，不保证所有环境都一致。
+
 ## License
 
 [MIT](./LICENSE) © 2026 Element

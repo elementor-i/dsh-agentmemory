@@ -184,6 +184,35 @@ npm run build
 npm test        # read-only checks against a running server
 ```
 
+## FAQ
+
+### The plugin manager fails to install — what else can I try?
+
+Oh-DSH-Desktop's plugin manager and the official CLI both end up running `dsh plugin --profile <name> add <package>`. If the plugin manager fails in your environment, the CLI is an equivalent fallback:
+
+```bash
+npx -p @deepseek-ai/dsh dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+```
+
+Replace `desktop` with your profile name, then restart DSH. If you are managing the desktop profile, run the command with the same `DSH_HOME` the desktop app uses (on macOS, `~/Library/Application Support/Oh-DSH-Desktop/dsh`).
+
+### `ERR_PNPM_UNEXPECTED_STORE` or "pnpm failed in profile directory"
+
+This can happen when the profile's `node_modules` was linked from a pnpm store that no longer exists — for example, after a plugin-manager preview directory was cleaned up. A workaround observed on macOS is to relink from the current store, then retry:
+
+```bash
+CI=true dsh plugin --profile desktop install
+dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+```
+
+(`CI=true` lets pnpm recreate `node_modules` without an interactive prompt.)
+
+### The plugin manager times out on `gh`
+
+The plugin manager shells out to the GitHub CLI (`gh`) to resolve commits and clone repositories. If it reports a `gh` timeout while the same command works in your own terminal, retrying — or using the CLI path above — is usually the quickest way forward.
+
+These notes describe symptoms observed in a specific environment; they are not a guarantee that every setup behaves the same way.
+
 ## License
 
 [MIT](./LICENSE) © 2026 Element
