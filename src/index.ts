@@ -107,7 +107,7 @@ function resolve(config: Config): ResolvedConfig {
 export function apply(ctx: Context, config: Config): void {
   const resolved = resolve(config)
   const client = new AgentMemoryClient({ baseURL: resolved.baseURL, secret: resolved.secret, defaultTimeoutMs: resolved.timeoutMs })
-  const state: HookState = { currentSession: null, injectedContext: '' }
+  const state: HookState = { sessions: new Map(), lastSessionId: null, injectedContext: '' }
 
   if (resolved.registerTools) {
     for (const def of TOOL_DEFS) {

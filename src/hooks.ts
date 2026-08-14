@@ -29,8 +29,17 @@ export interface ResolvedConfig {
   }
 }
 
+export interface SessionInfo {
+  sessionId: string
+  project: string
+  cwd: string
+}
+
 export interface HookState {
-  currentSession: { sessionId: string; project: string; cwd: string } | null
+  /** All known sessions, keyed by session id (project/cwd lookup). */
+  sessions: Map<string, SessionInfo>
+  /** Last-seen session id, used only as a fallback when an event carries no agent/session. */
+  lastSessionId: string | null
   injectedContext: string
 }
 
@@ -39,6 +48,12 @@ export interface HookState {
  * observations, mirroring agentmemory's own Claude Code hook scripts
  * (plugin/scripts/*.mjs). Every handler is non-blocking: HTTP is fired with a
  * short timeout and never awaited, and waterfall handlers always call next().
+ *
+ * Session attribution: the harness delivers the owning agent/session on each
+ * event payload (exec.agent.session, payload.agent, session). We resolve the
+ * session from that payload rather than a single mutable variable, so concurrent
+ * sessions (main + subagents + panels) each land their observations in the
+ * correct session.
  */
 export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cfg: ResolvedConfig, state: HookState): void {
   if (!cfg.hooks.enabled) return
@@ -47,16 +62,43 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
   // loosely and read payloads defensively.
   const on = (ctx as any).on.bind(ctx) as (event: string, handler: (...args: any[]) => any) => void
 
-  const fireObserve = (hookType: string, data: unknown) => {
-    const s = state.currentSession
-    const sessionId = s?.sessionId ?? 'unknown'
-    const project = s?.project ?? resolveProject(s?.cwd, cfg.projectName)
-    const cwd = s?.cwd ?? process.cwd()
+  /** Extract the owning session id + cwd from an agent or session object. */
+  const sessionOf = (source: unknown): { sessionId: string; cwd: string } | null => {
+    // Agent carries its live session (agent.session); a bare session object works too.
+    const sessionObj = pick(source, ['session']) ?? source
+    const id = pick(sessionObj, ['id', 'sessionId', 'key'])
+    const cwd = pick(sessionObj, ['cwd', 'workdir', 'directory'])
+    if (typeof id === 'string' && id.length > 0) {
+      return { sessionId: id, cwd: typeof cwd === 'string' && cwd ? cwd : process.cwd() }
+    }
+    return null
+  }
+
+  /** Resolve which session owns an event, from its payload (fallback: last-seen). */
+  const resolveSession = (source: unknown): SessionInfo => {
+    const direct = sessionOf(source)
+    if (direct) {
+      const info: SessionInfo = {
+        sessionId: direct.sessionId,
+        project: resolveProject(direct.cwd, cfg.projectName),
+        cwd: direct.cwd,
+      }
+      state.sessions.set(direct.sessionId, info)
+      state.lastSessionId = direct.sessionId
+      return info
+    }
+    const fallback = state.lastSessionId
+    if (fallback && state.sessions.has(fallback)) return state.sessions.get(fallback)!
+    return { sessionId: fallback ?? 'unknown', project: resolveProject(process.cwd(), cfg.projectName), cwd: process.cwd() }
+  }
+
+  const fireObserve = (hookType: string, data: unknown, source?: unknown) => {
+    const s = resolveSession(source)
     client.observe({
       hookType,
-      sessionId,
-      project,
-      cwd,
+      sessionId: s.sessionId,
+      project: s.project,
+      cwd: s.cwd,
       timestamp: new Date().toISOString(),
       data: truncate(data, cfg.hooks.maxObservationBytes),
     }, { timeoutMs: cfg.observeTimeoutMs }).catch(() => {})
@@ -69,7 +111,8 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
     const titleRaw = pick(session, ['title', 'summary', 'firstPrompt'])
     const title = typeof titleRaw === 'string' && titleRaw ? titleRaw.slice(0, 200) : undefined
     const project = resolveProject(cwd, cfg.projectName)
-    state.currentSession = { sessionId: id, project, cwd }
+    state.sessions.set(id, { sessionId: id, project, cwd })
+    state.lastSessionId = id
     const payload = { sessionId: id, project, cwd, ...(title ? { title } : {}) }
     if (cfg.injectContext) {
       client.sessionStart(payload, { timeoutMs: 1500 }).then((res) => {
@@ -81,12 +124,13 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
   })
 
   on('session/disposed', (session: any) => {
-    const s = state.currentSession
-    const id = String(pick(session, ['id', 'key', 'sessionId']) ?? s?.sessionId ?? 'unknown')
-    const project = s?.project ?? resolveProject(s?.cwd, cfg.projectName)
-    const cwd = s?.cwd ?? process.cwd()
-    client.sessionEnd({ sessionId: id, project, cwd }, { timeoutMs: 800 }).catch(() => {})
-    if (s && s.sessionId === id) state.currentSession = null
+    const id = String(pick(session, ['id', 'key', 'sessionId']) ?? '')
+    const info = id ? state.sessions.get(id) : undefined
+    const project = info?.project ?? resolveProject(process.cwd(), cfg.projectName)
+    const cwd = info?.cwd ?? process.cwd()
+    client.sessionEnd({ sessionId: id || 'unknown', project, cwd }, { timeoutMs: 800 }).catch(() => {})
+    if (id) state.sessions.delete(id)
+    if (state.lastSessionId === id) state.lastSessionId = null
   })
 
   // ---- prompt capture (UserPromptSubmit equivalent) ----
@@ -94,7 +138,7 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
     on('agent/inbox/inserted', (payload: any) => {
       const message = payload?.message ?? payload
       const text = extractText(message, cfg.hooks.maxObservationBytes)
-      if (text) fireObserve('prompt_submit', { prompt: text })
+      if (text) fireObserve('prompt_submit', { prompt: text }, payload?.agent ?? payload)
     })
   }
 
@@ -106,7 +150,7 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
       if (allowed(name)) {
         const raw = exec?.arguments ?? exec?.args
         const input = cfg.hooks.redactSecrets ? redactSecrets(raw) : raw
-        fireObserve('pre_tool_use', { tool_name: name, tool_input: input })
+        fireObserve('pre_tool_use', { tool_name: name, tool_input: input }, exec?.agent ?? exec)
       }
       return next()
     })
@@ -117,27 +161,27 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
         const raw = exec?.arguments ?? exec?.args
         const input = cfg.hooks.redactSecrets ? redactSecrets(raw) : raw
         const output = cfg.hooks.redactSecrets ? redactSecrets(result) : result
-        fireObserve(failed ? 'post_tool_failure' : 'post_tool_use', { tool_name: name, tool_input: input, tool_output: output })
+        fireObserve(failed ? 'post_tool_failure' : 'post_tool_use', { tool_name: name, tool_input: input, tool_output: output }, exec?.agent ?? exec)
       }
     })
   }
 
   // ---- subagents (SubagentStart / SubagentStop) ----
   if (cfg.hooks.captureSubagents) {
-    on('subagent/start', (info: any) => fireObserve('subagent_start', { id: pick(info, ['id', 'agentId', 'subagentId']), label: pick(info, ['label', 'description']) }))
-    on('subagent/end', (info: any) => fireObserve('subagent_stop', { id: pick(info, ['id', 'agentId', 'subagentId']), label: pick(info, ['label']), outcome: pick(info, ['outcome', 'status', 'result']) }))
+    on('subagent/start', (info: any) => fireObserve('subagent_start', { id: pick(info, ['id', 'agentId', 'subagentId']), label: pick(info, ['label', 'description']) }, info))
+    on('subagent/end', (info: any) => fireObserve('subagent_stop', { id: pick(info, ['id', 'agentId', 'subagentId']), label: pick(info, ['label']), outcome: pick(info, ['outcome', 'status', 'result']) }, info))
   }
 
   // ---- workflow orchestration ----
   if (cfg.hooks.captureWorkflow) {
-    on('workflow/start', (w: any) => fireObserve('workflow_start', { name: pick(w, ['name', 'id']), phases: pick(w, ['phases']) }))
-    on('workflow/end', (w: any) => fireObserve('workflow_end', { name: pick(w, ['name', 'id']), result: pick(w, ['result']) }))
+    on('workflow/start', (w: any) => fireObserve('workflow_start', { name: pick(w, ['name', 'id']), phases: pick(w, ['phases']) }, w))
+    on('workflow/end', (w: any) => fireObserve('workflow_end', { name: pick(w, ['name', 'id']), result: pick(w, ['result']) }, w))
   }
 
   // ---- approvals (opt-in; Notification equivalent) ----
   if (cfg.hooks.captureApprovals) {
     on('approval/request', (req: any, next: any) => {
-      fireObserve('approval_request', { summary: extractText(pick(req, ['question', 'request', 'message', 'summary']), 2000) })
+      fireObserve('approval_request', { summary: extractText(pick(req, ['question', 'request', 'message', 'summary']), 2000) }, req)
       return next()
     })
   }
@@ -145,14 +189,14 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
   // ---- pre-compact approximation (PreCompact equivalent) ----
   if (cfg.hooks.preCompactSnapshot) {
     on('agent/request-error', (payload: any, next: any) => {
-      fireObserve('pre_compact', { provider: payload?.provider, failure: extractText(payload?.failure, 2000) })
+      fireObserve('pre_compact', { provider: payload?.provider, failure: extractText(payload?.failure, 2000) }, payload?.agent ?? payload)
       return next()
     })
   }
 
   // ---- turn completion (TaskCompleted equivalent) ----
   on('agent/turn-stopping', (payload: any) => {
-    fireObserve('task_completed', { turn: payload?.turn })
+    fireObserve('task_completed', { turn: payload?.turn }, payload?.agent ?? payload)
   })
 
   // ---- context injection (opt-in) ----
