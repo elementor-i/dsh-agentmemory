@@ -1,8 +1,8 @@
 {
   "name": "@dsh-external/dsh-agentmemory",
   "version": "0.1.0",
-  "description": "agentmemory for DeepSeek Harness: full memory_* tool surface over REST plus automatic capture hooks (session lifecycle, prompts, tool use, subagents) and opt-in context injection",
-  "private": true,
+  "description": "agentmemory for DeepSeek Harness (dsh): full memory_* tools, capture hooks, and context injection over the local REST server",
+  "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -11,79 +11,14 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./package.json": "./package.json",
-    "./cordis.patch.yml": "./cordis.patch.yml"
+    "./package.json": "./package.json"
   },
   "files": [
     "lib",
     "cordis.patch.yml"
   ],
-  "license": "MIT",
   "engines": {
-    "dsh": ">=0.0.1"
-  },
-  "dshx": {
-    "contributes": {
-      "tools": [
-        "memory_action_create",
-        "memory_action_update",
-        "memory_audit",
-        "memory_checkpoint",
-        "memory_claude_bridge_sync",
-        "memory_commit_lookup",
-        "memory_commits",
-        "memory_compress_file",
-        "memory_consolidate",
-        "memory_crystallize",
-        "memory_diagnose",
-        "memory_export",
-        "memory_facet_query",
-        "memory_facet_tag",
-        "memory_file_history",
-        "memory_frontier",
-        "memory_governance_delete",
-        "memory_graph_query",
-        "memory_heal",
-        "memory_insight_list",
-        "memory_lease",
-        "memory_lesson_delete",
-        "memory_lesson_recall",
-        "memory_lesson_save",
-        "memory_mesh_sync",
-        "memory_next",
-        "memory_obsidian_export",
-        "memory_patterns",
-        "memory_profile",
-        "memory_recall",
-        "memory_reflect",
-        "memory_relations",
-        "memory_routine_run",
-        "memory_save",
-        "memory_sentinel_create",
-        "memory_sentinel_trigger",
-        "memory_sessions",
-        "memory_signal_read",
-        "memory_signal_send",
-        "memory_sketch_create",
-        "memory_sketch_promote",
-        "memory_slot_append",
-        "memory_slot_create",
-        "memory_slot_delete",
-        "memory_slot_get",
-        "memory_slot_list",
-        "memory_slot_replace",
-        "memory_smart_search",
-        "memory_snapshot_create",
-        "memory_team_feed",
-        "memory_team_share",
-        "memory_timeline",
-        "memory_verify",
-        "memory_vision_search",
-        "memory_observe",
-        "memory_http"
-      ],
-      "skills": []
-    }
+    "node": ">=22"
   },
   "dsh": {
     "bundle": {
@@ -95,19 +30,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node tests/live-check.mjs"
   },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1-rc.1",
-    "@deepseek-ai/dsh-system-prompt": ">=0.0.1-rc.1 <0.2.0",
-    "@deepseek-ai/dsh-tools": ">=0.0.1-rc.1 <0.2.0"
-  },
   "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
     "schemastery": "^3.18.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
-    "@deepseek-ai/dsh-system-prompt": "0.0.1-rc.1",
-    "@deepseek-ai/dsh-tools": "0.0.1-rc.1",
-    "@types/node": "^26.2.0",
+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.6",
+    "@types/node": "^22.10.0",
     "typescript": "^5.9.0"
   }
 }
