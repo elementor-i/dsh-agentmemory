@@ -62,14 +62,25 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
   // loosely and read payloads defensively.
   const on = (ctx as any).on.bind(ctx) as (event: string, handler: (...args: any[]) => any) => void
 
+  /** Read a session's absolute working directory. The Session class stores it
+   *  under `session.header.cwd`, not as a top-level `cwd` property. */
+  const cwdOf = (obj: unknown): string | undefined => {
+    const direct = pick(obj, ['cwd', 'workdir', 'directory'])
+    if (typeof direct === 'string' && direct) return direct
+    const header = pick(obj, ['header'])
+    const hcwd = pick(header, ['cwd', 'workdir', 'directory'])
+    if (typeof hcwd === 'string' && hcwd) return hcwd
+    return undefined
+  }
+
   /** Extract the owning session id + cwd from an agent or session object. */
   const sessionOf = (source: unknown): { sessionId: string; cwd: string } | null => {
     // Agent carries its live session (agent.session); a bare session object works too.
     const sessionObj = pick(source, ['session']) ?? source
     const id = pick(sessionObj, ['id', 'sessionId', 'key'])
-    const cwd = pick(sessionObj, ['cwd', 'workdir', 'directory'])
+    const cwd = cwdOf(sessionObj)
     if (typeof id === 'string' && id.length > 0) {
-      return { sessionId: id, cwd: typeof cwd === 'string' && cwd ? cwd : process.cwd() }
+      return { sessionId: id, cwd: cwd ?? process.cwd() }
     }
     return null
   }
@@ -107,7 +118,7 @@ export function subscribeHooks(ctx: CordisContext, client: AgentMemoryClient, cf
   // ---- session lifecycle (session/created, session/disposed) ----
   on('session/created', (session: any) => {
     const id = String(pick(session, ['id', 'key', 'sessionId']) ?? 'ses_' + Date.now().toString(36))
-    const cwd = String(pick(session, ['cwd', 'workdir', 'directory']) ?? process.cwd())
+    const cwd = cwdOf(session) ?? process.cwd()
     const titleRaw = pick(session, ['title', 'summary', 'firstPrompt'])
     const title = typeof titleRaw === 'string' && titleRaw ? titleRaw.slice(0, 200) : undefined
     const project = resolveProject(cwd, cfg.projectName)
