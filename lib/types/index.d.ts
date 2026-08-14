@@ -1,7 +1,7 @@
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import type SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import type ToolRuntime from '@deepseek-ai/dsh-tools';
-import z from 'schemastery';
+import z from '@deepseek-ai/schemastery';
 type Context = CordisContext & {
     tools: ToolRuntime;
     systemPrompt: SystemPrompt;

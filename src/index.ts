@@ -1,7 +1,7 @@
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import type ToolRuntime from '@deepseek-ai/dsh-tools'
-import z from 'schemastery'
+import z from '@deepseek-ai/schemastery'
 import { AgentMemoryClient } from './client.js'
 import { TOOL_DEFS, buildTool, buildObserveTool, buildHttpTool } from './tools.js'
 import { subscribeHooks, type HookState, type ResolvedConfig } from './hooks.js'
