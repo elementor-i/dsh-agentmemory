@@ -55,21 +55,27 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 }
 
 /** Best-effort text extraction from a DSH message/tool result, for observation capture. */
+/** Extract readable text from a content-block array ([{ type: 'text', text }, ...]). */
+function extractBlocks(blocks: unknown[], max: number): string {
+  const parts: string[] = []
+  for (const block of blocks) {
+    const b = block as any
+    if (!b || typeof b !== 'object') continue
+    if (typeof b.text === 'string' && b.text) parts.push(b.text)
+    else if (b.type === 'text' && typeof b.content === 'string') parts.push(b.content)
+  }
+  if (parts.length) return truncate(parts.join('\n'), max) as string
+  return truncate(JSON.stringify(blocks), max) as string
+}
+
+/** Best-effort text extraction from a DSH message/tool result, for observation capture. */
 export function extractText(value: unknown, max = 8000): string {
   if (value == null) return ''
   if (typeof value === 'string') return truncate(value, max) as string
-  if (Array.isArray(value)) {
-    const parts: string[] = []
-    for (const block of value) {
-      const b = block as any
-      if (b && typeof b === 'object' && typeof b.text === 'string') parts.push(b.text)
-      else if (b && typeof b === 'object' && b.type === 'text' && typeof b.content === 'string') parts.push(b.content)
-    }
-    if (parts.length) return truncate(parts.join('\n'), max) as string
-    return truncate(JSON.stringify(value), max) as string
-  }
+  if (Array.isArray(value)) return extractBlocks(value, max)
   const o = value as any
   if (o && typeof o === 'object') {
+    if (Array.isArray(o.content)) return extractBlocks(o.content, max)
     if (typeof o.text === 'string') return truncate(o.text, max) as string
     if (typeof o.content === 'string') return truncate(o.content, max) as string
     if (typeof o.message === 'string') return truncate(o.message, max) as string
