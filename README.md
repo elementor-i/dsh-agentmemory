@@ -59,9 +59,24 @@ npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agen
 
 Replace `web` with your profile name. The package declares a `dsh.bundle.patch`, so it loads as a profile layer; compiled output is committed, so no build runs on install.
 
-### Plugin manager
+### Plugin manager (AI-assisted)
 
-Install from the Oh-DSH-Desktop plugin manager by searching for `dsh-agentmemory`.
+Oh-DSH-Desktop's plugin manager installs with an isolated preview and rollback. It is driven by an AI coding agent through tools — not shell commands — so the fastest path is to paste this prompt to your assistant:
+
+> Install `dsh-agentmemory` from the Oh-DSH-Desktop plugin manager: refresh the plugin catalog, prepare the install as an isolated preview, and apply it after I review the preview.
+
+Under the hood the assistant calls these tools:
+
+```text
+desktop_plugin_search  { query: 'dsh-agentmemory', refresh: true }   # confirm it is in the catalog
+desktop_plugin_prepare { action: 'install', pluginId: 'dsh-agentmemory' }
+desktop_plugin_apply   {}                                            # after you approve the preview
+```
+
+Notes:
+
+- The plugin must already be in the public DSH catalog. The catalog is rebuilt hourly from GitHub repos tagged `dsh-plugin`, so a newly published repo appears within about an hour.
+- `desktop_plugin_apply` restarts the live DSH runtime — review the isolated preview before applying.
 
 ## Configuration
 

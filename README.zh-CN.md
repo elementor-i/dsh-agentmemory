@@ -59,9 +59,24 @@ npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agen
 
 把 `web` 换成你的 profile 名。插件声明了 `dsh.bundle.patch`，会作为 profile layer 加载；编译产物已随仓库提供，安装时无需构建。
 
-### 插件管理器
+### 插件管理器（AI 助手代装）
 
-在 Oh-DSH-Desktop 插件管理器中搜索 `dsh-agentmemory` 安装。
+Oh-DSH-Desktop 的插件管理器带隔离预览与回滚，由 AI 编码助手通过工具驱动、而非 shell 命令，所以最快的方式是直接把这句话发给助手：
+
+> 用 Oh-DSH-Desktop 插件管理器安装 `dsh-agentmemory`：先刷新插件目录，再以隔离预览方式准备安装，我审查预览后你再应用。
+
+助手在底层会调用这些工具：
+
+```text
+desktop_plugin_search  { query: 'dsh-agentmemory', refresh: true }   # 确认已在目录中
+desktop_plugin_prepare { action: 'install', pluginId: 'dsh-agentmemory' }
+desktop_plugin_apply   {}                                            # 你审查预览后应用
+```
+
+说明：
+
+- 插件必须已出现在公开 DSH 目录中。目录每小时从带 `dsh-plugin` topic 的 GitHub 仓库重建，新发布的仓库约一小时内可见。
+- `desktop_plugin_apply` 会重启 DSH 运行时——应用前请先审查隔离预览。
 
 ## 配置
 
