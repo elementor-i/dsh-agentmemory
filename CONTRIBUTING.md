@@ -18,4 +18,4 @@ Thanks for considering a contribution to dsh-agentmemory.
 
 - Keep the REST tool mapping in src/tools.ts in sync with agentmemory's generated reference.
 - Hook handlers must stay non-blocking and always call next() on waterfall events.
-- Add or update both README.md and README.zh-CN.md for user-facing changes.
+- Add or update both README.md and README_zh-CN.md for user-facing changes.

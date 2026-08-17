@@ -4,7 +4,7 @@
 
 **DeepSeek Harness 的 agentmemory 集成** —— 完整的 `memory_*` 工具集、自动捕获 hooks、可选的上下文注入，全部通过本地 REST 服务完成。
 
-[English](./README.md) · [中文](./README.zh-CN.md)
+[English](./README.md) · [中文](./README_zh-CN.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![CI](https://github.com/elementor-i/dsh-agentmemory/actions/workflows/ci.yml/badge.svg)](https://github.com/elementor-i/dsh-agentmemory/actions/workflows/ci.yml)

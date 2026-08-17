@@ -4,7 +4,7 @@
 
 **agentmemory for DeepSeek Harness** — full `memory_*` tools, automatic capture hooks, and opt-in context injection over the local REST server.
 
-[English](./README.md) · [中文](./README.zh-CN.md)
+[English](./README.md) · [中文](./README_zh-CN.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![CI](https://github.com/elementor-i/dsh-agentmemory/actions/workflows/ci.yml/badge.svg)](https://github.com/elementor-i/dsh-agentmemory/actions/workflows/ci.yml)

@@ -1,6 +1,6 @@
 {
   "name": "@elementor-i/dsh-agentmemory",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "agentmemory for DeepSeek Harness (dsh): full memory_* tools, capture hooks, and context injection over the local REST server",
   "license": "MIT",
   "repository": {
@@ -33,7 +33,7 @@
     "cordis.patch.yml",
     "dsh.plugin.json",
     "README.md",
-    "README.zh-CN.md",
+    "README_zh-CN.md",
     "LICENSE"
   ],
   "engines": {
