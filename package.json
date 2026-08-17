@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-external/dsh-agentmemory",
+  "name": "@elementor-i/dsh-agentmemory",
   "version": "0.1.1",
   "description": "agentmemory for DeepSeek Harness (dsh): full memory_* tools, capture hooks, and context injection over the local REST server",
   "license": "MIT",

@@ -2,4 +2,4 @@
 # `name` resolves to this package's own entry (lib/index.js) via main/exports.
 - insert:
     - id: dsh-agentmemory
-      name: '@dsh-external/dsh-agentmemory'
+      name: '@elementor-i/dsh-agentmemory'
