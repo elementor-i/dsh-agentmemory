@@ -5,6 +5,7 @@ import z from '@deepseek-ai/schemastery'
 import { AgentMemoryClient } from './client.js'
 import { TOOL_DEFS, buildTool, buildObserveTool, buildHttpTool } from './tools.js'
 import { subscribeHooks, type HookState, type ResolvedConfig } from './hooks.js'
+import { resolveProject } from './util.js'
 
 type Context = CordisContext & { tools: ToolRuntime; systemPrompt: SystemPrompt; logger?: { warn?: (msg: string) => void } }
 
@@ -115,7 +116,17 @@ export function apply(ctx: Context, config: Config): void {
       if (!resolved.dangerousTools && DANGEROUS.has(def.name)) continue
       ctx.effect(() => ctx.tools.register(buildTool(client, def, resolved.timeoutMs)))
     }
-    ctx.effect(() => ctx.tools.register(buildObserveTool(client, resolved.timeoutMs, resolved.projectName, process.cwd())))
+    // The server rejects an empty `project` on /agentmemory/observe, so resolve
+    // it the same way the capture hooks do (config/env override, then git
+    // basename) instead of passing the raw (possibly empty) projectName.
+    // Resolve lazily per call so a session-level cwd change is picked up.
+    ctx.effect(() => ctx.tools.register(buildObserveTool(
+      client,
+      resolved.timeoutMs,
+      () => resolveProject(process.cwd(), resolved.projectName),
+      () => process.cwd(),
+      () => state.lastSessionId,
+    )))
     ctx.effect(() => ctx.tools.register(buildHttpTool(client, resolved.timeoutMs)))
   }
 

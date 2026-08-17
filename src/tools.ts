@@ -13,6 +13,12 @@ export interface ToolDef {
   core?: boolean
   params: Record<string, ParamSpec>
   pathFor?: (params: Record<string, unknown>) => string
+  /** Params whose comma-separated string value must become string[] at the REST layer. */
+  csvArrays?: string[]
+  /** Params whose 'true'/'false' string value must become a boolean at the REST layer. */
+  booleans?: string[]
+  /** Params whose JSON-string value must become an object at the REST layer. */
+  json?: string[]
 }
 
 const s = (description: string, required = false): ParamSpec => ({ type: 'string', required, description })
@@ -27,7 +33,8 @@ const n = (description: string, required = false): ParamSpec => ({ type: 'number
 export const TOOL_DEFS: ToolDef[] = [
   // ---- capture ----
   { name: 'memory_save', description: 'Explicitly save an important insight, decision, or pattern to long-term memory.', method: 'POST', path: '/agentmemory/remember', core: true,
-    params: { content: s('The insight, decision, or pattern to remember', true), type: s('Observation type'), concepts: s('Comma-separated concept keywords'), files: s('Comma-separated relevant file paths'), project: s('Project identifier') } },
+    params: { content: s('The insight, decision, or pattern to remember', true), type: s('Observation type'), concepts: s('Comma-separated concept keywords'), files: s('Comma-separated relevant file paths'), project: s('Project identifier') },
+    csvArrays: ['concepts', 'files'] },
   { name: 'memory_compress_file', description: 'Compress a markdown file to reduce token usage while preserving headings, URLs, and code blocks. Creates a .original.md backup before writing.', method: 'POST', path: '/agentmemory/compress-file',
     params: { filePath: s('Path to the markdown file to compress', true) } },
 
@@ -37,8 +44,9 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_smart_search', description: 'Hybrid semantic+keyword search with progressive disclosure.', method: 'POST', path: '/agentmemory/smart-search', core: true,
     params: { query: s('Search query', true), expandIds: s('Related ids to expand'), limit: n('Max results') } },
   { name: 'memory_file_history', description: 'Get past observations about specific files.', method: 'POST', path: '/agentmemory/file-context',
-    params: { files: s('Comma-separated file paths', true), sessionId: s('Restrict to a session') } },
-  { name: 'memory_timeline', description: 'Chronological observations around an anchor point.', method: 'POST', path: '/agentmemory/timeline',
+    params: { files: s('Comma-separated file paths', true), sessionId: s('Restrict to a session') },
+    csvArrays: ['files'] },
+  { name: 'memory_timeline', description: 'Chronological observations around an anchor point: an ISO timestamp (e.g. 2026-08-14T12:00:00Z) or a keyword present in observation titles/narratives/concepts. The server does not resolve session ids as anchors.', method: 'POST', path: '/agentmemory/timeline',
     params: { anchor: s('Anchor point (session id, timestamp, or concept)', true), project: s('Project path'), before: n('Look back N observations'), after: n('Look forward N observations') } },
   { name: 'memory_vision_search', description: 'Cross-modal image search via CLIP embeddings. Pass queryText to find screenshots matching a description, or queryImageBase64/queryImageRef to find similar images. Requires AGENTMEMORY_IMAGE_EMBEDDINGS=true.', method: 'POST', path: '/agentmemory/vision-search',
     params: { queryText: s('Natural-language description to match'), queryImageRef: s('Absolute path to a stored image to match against'), queryImageBase64: s('Base64 image to match against'), topK: n('Number of results'), sessionId: s('Restrict to a session') } },
@@ -64,11 +72,13 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_patterns', description: 'Detect recurring patterns across sessions.', method: 'POST', path: '/agentmemory/patterns',
     params: { project: s('Project path') } },
   { name: 'memory_crystallize', description: 'Compress completed action chains into compact crystal digests using LLM summarization. Extracts narrative, key outcomes, files affected, and lessons.', method: 'POST', path: '/agentmemory/crystals/create',
-    params: { actionIds: s('Comma-separated action ids', true), project: s('Project path'), sessionId: s('Session id') } },
+    params: { actionIds: s('Comma-separated action ids', true), project: s('Project path'), sessionId: s('Session id') },
+    csvArrays: ['actionIds'] },
 
   // ---- structured slots ----
   { name: 'memory_slot_create', description: 'Create a new slot. Reject if a slot with the same label already exists.', method: 'POST', path: '/agentmemory/slot',
-    params: { label: s('Slot label', true), content: s('Initial content'), sizeLimit: n('Max content size'), description: s('What this slot holds'), pinned: s('Pin to top'), scope: s('global | project') } },
+    params: { label: s('Slot label', true), content: s('Initial content'), sizeLimit: n('Max content size'), description: s('What this slot holds'), pinned: s("Pin to top ('true' or 'false')"), scope: s('global | project') },
+    booleans: ['pinned'] },
   { name: 'memory_slot_get', description: 'Read a single slot by label.', method: 'GET', path: '/agentmemory/slot',
     params: { label: s('Slot label', true) } },
   { name: 'memory_slot_append', description: 'Append text to an existing slot. Fails with 413 if the append would exceed the slot sizeLimit; compact via memory_slot_replace first.', method: 'POST', path: '/agentmemory/slot/append',
@@ -103,7 +113,8 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_signal_read', description: 'Read messages for an agent. Marks delivered messages as read.', method: 'GET', path: '/agentmemory/signals',
     params: { agentId: s('Agent id', true), unreadOnly: s('Only unread'), threadId: s('Thread id'), limit: n('Max messages') } },
   { name: 'memory_sentinel_create', description: 'Create an event-driven sentinel that watches for conditions (webhook, timer, threshold, pattern, approval) and auto-unblocks gated actions when triggered.', method: 'POST', path: '/agentmemory/sentinels',
-    params: { name: s('Sentinel name', true), type: s('Sentinel type', true), config: s('JSON config (timer, threshold, pattern, webhook)'), linkedActionIds: s('Gated action ids'), expiresInMs: n('TTL') } },
+    params: { name: s('Sentinel name', true), type: s('Sentinel type', true), config: s('JSON config (timer, threshold, pattern, webhook)'), linkedActionIds: s('Gated action ids'), expiresInMs: n('TTL') },
+    csvArrays: ['linkedActionIds'], json: ['config'] },
   { name: 'memory_sentinel_trigger', description: 'Externally fire a sentinel, providing an optional result payload. Unblocks any gated actions.', method: 'POST', path: '/agentmemory/sentinels/trigger',
     params: { sentinelId: s('Sentinel id', true), result: s('Result payload') } },
   { name: 'memory_sketch_create', description: 'Create an ephemeral action graph for exploratory work. Auto-expires after TTL. Can be promoted to permanent actions or discarded.', method: 'POST', path: '/agentmemory/sketches',
@@ -113,7 +124,8 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_facet_tag', description: 'Attach a structured tag (dimension:value) to an action, memory, or observation for multi-dimensional categorization.', method: 'POST', path: '/agentmemory/facets',
     params: { targetId: s('Target id', true), targetType: s('Target type', true), dimension: s('Tag dimension', true), value: s('Tag value', true) } },
   { name: 'memory_facet_query', description: 'Query targets by facet tags with AND/OR logic. Find all actions tagged priority:urgent AND team:backend.', method: 'POST', path: '/agentmemory/facets/query',
-    params: { matchAll: s('Tags that must ALL match'), matchAny: s('Tags where ANY matches'), targetType: s('Target type') } },
+    params: { matchAll: s('Tags that must ALL match'), matchAny: s('Tags where ANY matches'), targetType: s('Target type') },
+    csvArrays: ['matchAll', 'matchAny'] },
   { name: 'memory_mesh_sync', description: 'Sync memories and actions with peer agentmemory instances for multi-agent collaboration.', method: 'POST', path: '/agentmemory/mesh/sync',
     params: { peerId: s('Peer id'), direction: s('Sync direction') } },
 
@@ -138,7 +150,8 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_reflect', description: 'Traverse the knowledge graph, group related memories by concept clusters, and synthesize higher-order insights via LLM. Returns new and reinforced insights.', method: 'POST', path: '/agentmemory/reflect', core: true,
     params: { project: s('Project path'), maxClusters: n('Max concept clusters') } },
   { name: 'memory_diagnose', description: 'Run health checks across all subsystems (actions, leases, sentinels, sketches, signals, sessions, memories, mesh). Identifies stuck, orphaned, and inconsistent state.', method: 'POST', path: '/agentmemory/diagnostics', core: true,
-    params: { categories: s('Comma-separated categories to check') } },
+    params: { categories: s('Comma-separated categories to check') },
+    csvArrays: ['categories'] },
   { name: 'memory_heal', description: 'Auto-fix all fixable issues found by diagnostics. Unblocks stuck actions, expires stale leases, cleans up orphaned data.', method: 'POST', path: '/agentmemory/diagnostics/heal',
     params: { categories: s('Comma-separated categories'), dryRun: s("Set 'true' to preview without fixing") } },
   { name: 'memory_verify', description: 'Verify a memory or observation by tracing its citation chain back to source observations and session context. Returns provenance information including confidence scores.', method: 'POST', path: '/agentmemory/verify',
@@ -146,7 +159,8 @@ export const TOOL_DEFS: ToolDef[] = [
   { name: 'memory_audit', description: 'View the audit trail of memory operations.', method: 'GET', path: '/agentmemory/audit',
     params: { operation: s('Filter by operation'), limit: n('Max results') } },
   { name: 'memory_governance_delete', description: 'Delete specific memories with audit trail.', method: 'DELETE', path: '/agentmemory/governance/memories',
-    params: { memoryIds: s('Comma-separated memory ids', true), reason: s('Reason for deletion') } },
+    params: { memoryIds: s('Comma-separated memory ids', true), reason: s('Reason for deletion') },
+    csvArrays: ['memoryIds'] },
   { name: 'memory_insight_list', description: 'List synthesized insights, higher-order observations derived from patterns across memories, lessons, and crystals.', method: 'GET', path: '/agentmemory/insights',
     params: { project: s('Project path'), minConfidence: n('Minimum confidence'), limit: n('Max results') } },
 ]
@@ -162,6 +176,60 @@ function pickDefined(args: unknown, params: Record<string, ParamSpec>): Record<s
   for (const k of Object.keys(params)) {
     const v = input[k]
     if (v !== undefined && v !== null && v !== '') out[k] = v
+  }
+  return out
+}
+
+const TRUE_WORDS = new Set(['true', '1', 'yes', 'on'])
+const FALSE_WORDS = new Set(['false', '0', 'no', 'off'])
+
+function toCsvArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  if (typeof v === 'string') return v.split(',').map((p) => p.trim()).filter(Boolean)
+  return []
+}
+
+function toBoolean(v: unknown): unknown {
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase()
+    if (TRUE_WORDS.has(s)) return true
+    if (FALSE_WORDS.has(s)) return false
+  }
+  if (typeof v === 'number') return v !== 0
+  return v // Leave as-is; the server answers with a clear 400.
+}
+
+function toJsonObject(v: unknown): unknown {
+  if (typeof v !== 'string') return v
+  try {
+    return JSON.parse(v)
+  } catch {
+    return v // Leave as-is; the server answers with a clear 400.
+  }
+}
+
+/**
+ * The server's REST layer validates array/boolean/object fields literally —
+ * its MCP adapter converts comma-separated strings before calling the inner
+ * functions, but the REST routes do not (e.g. mem::remember rejects a string
+ * `concepts` with "concepts must be an array"). Mirror the MCP adapter's
+ * conversions here so the documented comma-separated tool inputs work
+ * end to end over REST.
+ */
+function coerceParams(cleaned: Record<string, unknown>, def: ToolDef): Record<string, unknown> {
+  const out = { ...cleaned }
+  for (const k of def.csvArrays ?? []) {
+    if (out[k] === undefined) continue
+    const arr = toCsvArray(out[k])
+    if (arr.length > 0) out[k] = arr
+    else delete out[k]
+  }
+  for (const k of def.booleans ?? []) {
+    if (out[k] !== undefined) out[k] = toBoolean(out[k])
+  }
+  for (const k of def.json ?? []) {
+    if (out[k] !== undefined) out[k] = toJsonObject(out[k])
   }
   return out
 }
@@ -183,17 +251,27 @@ export function buildTool(client: AgentMemoryClient, def: ToolDef, timeoutMs: nu
     isConcurrencySafe: () => true,
     execute: async (args, exec) => {
       const cleaned = pickDefined(args, def.params)
-      const path = def.pathFor ? def.pathFor(cleaned) : def.path
+      const payload = coerceParams(cleaned, def)
+      const path = def.pathFor ? def.pathFor(payload) : def.path
       const result = def.method === 'GET'
-        ? await client.request(path, { method: 'GET', query: cleaned, timeoutMs, signal: exec.signal })
-        : await client.request(path, { method: def.method, body: cleaned, timeoutMs, signal: exec.signal })
+        ? await client.request(path, { method: 'GET', query: payload, timeoutMs, signal: exec.signal })
+        : await client.request(path, { method: def.method, body: payload, timeoutMs, signal: exec.signal })
       return JSON.stringify(result, null, 2)
     },
   })
 }
 
-/** Manual observation capture (hooks do this automatically; this is the explicit path). */
-export function buildObserveTool(client: AgentMemoryClient, timeoutMs: number, project: string, cwd: string) {
+/**
+ * Manual observation capture (hooks do this automatically; this is the explicit path).
+ *
+ * The server's /agentmemory/observe requires non-empty hookType, sessionId,
+ * project, cwd and timestamp. The tool schema only exposes the first three
+ * (sessionId optional); project/cwd/timestamp are filled in here. `project`
+ * and `cwd` accept a getter so they resolve per call (the harness can change
+ * its working directory between sessions); an empty project would be rejected
+ * by the server.
+ */
+export function buildObserveTool(client: AgentMemoryClient, timeoutMs: number, project: string | (() => string), cwd: string | (() => string), activeSessionId?: () => string | null) {
   return defineTool({
     name: 'memory_observe',
     description: 'Record a raw observation into agentmemory with the given hook type. Automatic capture usually covers this; use for one-off annotations.',
@@ -207,12 +285,13 @@ export function buildObserveTool(client: AgentMemoryClient, timeoutMs: number, p
     isConcurrencySafe: () => true,
     execute: async (args, exec) => {
       const a = (args ?? {}) as Record<string, unknown>
-      const sessionId = typeof a.sessionId === 'string' && a.sessionId ? a.sessionId : 'unknown'
+      const explicit = typeof a.sessionId === 'string' && a.sessionId.trim() ? a.sessionId.trim() : undefined
+      const sessionId = explicit ?? activeSessionId?.() ?? 'unknown'
       const result = await client.observe({
         hookType: String(a.hookType ?? 'note'),
         sessionId,
-        project,
-        cwd,
+        project: typeof project === 'function' ? project() : project,
+        cwd: typeof cwd === 'function' ? cwd() : cwd,
         timestamp: new Date().toISOString(),
         data: { content: String(a.content ?? '') },
       }, { timeoutMs, signal: exec.signal })
