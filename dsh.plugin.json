@@ -1,6 +1,6 @@
 {
   "id": "@dsh-external/dsh-agentmemory",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "./lib/index.js",
   "description": "agentmemory integration for DeepSeek Harness: memory_* tools over the local REST server, automatic lifecycle capture hooks (session / prompt / tool-use / subagent), and optional context injection",
   "engines": {
