@@ -6,7 +6,7 @@ Thanks for considering a contribution to dsh-agentmemory.
 
     git clone https://github.com/elementor-i/dsh-agentmemory
     cd dsh-agentmemory
-    npm install --legacy-peer-deps
+    npm install
 
 ## Checks
 

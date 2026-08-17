@@ -54,6 +54,10 @@ Then restart DSH. Compiled output is committed, so no build step is required.
 ### Official CLI
 
 ```bash
+# npm registry (recommended) — @elementor-i/dsh-agentmemory@^0.1.1
+npx -p @deepseek-ai/dsh dsh plugin --profile web add @elementor-i/dsh-agentmemory
+
+# or directly from the source repository
 npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agentmemory
 ```
 
@@ -178,7 +182,7 @@ On a 4xx or 5xx response, follow the hint in the response body or align the serv
 Build from source:
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm run typecheck
 npm run build
 npm test        # read-only checks against a running server
@@ -191,7 +195,7 @@ npm test        # read-only checks against a running server
 Oh-DSH-Desktop's plugin manager and the official CLI both end up running `dsh plugin --profile <name> add <package>`. If the plugin manager fails in your environment, the CLI is an equivalent fallback:
 
 ```bash
-npx -p @deepseek-ai/dsh dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+npx -p @deepseek-ai/dsh dsh plugin --profile desktop add @elementor-i/dsh-agentmemory
 ```
 
 Replace `desktop` with your profile name, then restart DSH. If you are managing the desktop profile, run the command with the same `DSH_HOME` the desktop app uses (on macOS, `~/Library/Application Support/Oh-DSH-Desktop/dsh`).
@@ -202,7 +206,7 @@ This can happen when the profile's `node_modules` was linked from a pnpm store t
 
 ```bash
 CI=true dsh plugin --profile desktop install
-dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+dsh plugin --profile desktop add @elementor-i/dsh-agentmemory
 ```
 
 (`CI=true` lets pnpm recreate `node_modules` without an interactive prompt.)

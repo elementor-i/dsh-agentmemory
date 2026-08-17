@@ -54,6 +54,10 @@ git clone https://github.com/elementor-i/dsh-agentmemory ~/dsh-plugins/dsh-agent
 ### 官方 CLI
 
 ```bash
+# npm 仓库（推荐）— @elementor-i/dsh-agentmemory@^0.1.1
+npx -p @deepseek-ai/dsh dsh plugin --profile web add @elementor-i/dsh-agentmemory
+
+# 或直接从源码仓库安装
 npx -p @deepseek-ai/dsh dsh plugin --profile web add github:elementor-i/dsh-agentmemory
 ```
 
@@ -178,7 +182,7 @@ memory_* 工具 ──▶  /agentmemory/*              按需操作
 从源码构建：
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm run typecheck
 npm run build
 npm test        # 对运行中的 server 做只读连通测试
@@ -191,7 +195,7 @@ npm test        # 对运行中的 server 做只读连通测试
 Oh-DSH-Desktop 的插件管理器与官方 CLI 底层都会执行 `dsh plugin --profile <name> add <package>`。如果你那里的插件管理器装不上，CLI 是等效的替代方案：
 
 ```bash
-npx -p @deepseek-ai/dsh dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+npx -p @deepseek-ai/dsh dsh plugin --profile desktop add @elementor-i/dsh-agentmemory
 ```
 
 把 `desktop` 换成你的 profile 名，然后重启 DSH。如果你管理的是桌面 profile，请使用与桌面应用相同的 `DSH_HOME`（macOS 下为 `~/Library/Application Support/Oh-DSH-Desktop/dsh`）。
@@ -202,7 +206,7 @@ npx -p @deepseek-ai/dsh dsh plugin --profile desktop add github:elementor-i/dsh-
 
 ```bash
 CI=true dsh plugin --profile desktop install
-dsh plugin --profile desktop add github:elementor-i/dsh-agentmemory
+dsh plugin --profile desktop add @elementor-i/dsh-agentmemory
 ```
 
 （`CI=true` 让 pnpm 在无交互提示下重建 `node_modules`。）
