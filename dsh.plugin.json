@@ -1,6 +1,6 @@
 {
   "id": "@elementor-i/dsh-agentmemory",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "main": "./lib/index.js",
   "description": "agentmemory integration for DeepSeek Harness: memory_* tools over the local REST server, automatic lifecycle capture hooks (session / prompt / tool-use / subagent), and optional context injection",
   "engines": {
